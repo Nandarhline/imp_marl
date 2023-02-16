@@ -57,10 +57,11 @@ class Pomdp:
                 q0 = qt
                 self.qq[t+1,:] = qt
                 S = qt*math.gamma(1+1/0.8)
-        if self.time_variant_q is True:
-            return self.dd, self.qq
-        else: 
-            return self.dd
+        return
+#         if self.time_variant_q is True:
+#             return self.dd, self.qq
+#         else: 
+#             return self.dd
         
     def transition_models(self, n_dstates=30, n_qstates = 20):
         if self.time_variant_q is True:

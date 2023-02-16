@@ -21,3 +21,4 @@ torch==1.12.1
 typing_extensions==4.3.0
 wrapt==1.14.1
 zipp==3.8.1
+
