@@ -1,7 +1,7 @@
 import copy
-from pymarl.components.episode_buffer import EpisodeBatch
-from pymarl.modules.critics.coma import COMACritic
-from pymarl.utils.rl_utils import build_td_lambda_targets
+from components.episode_buffer import EpisodeBatch
+from modules.critics.coma import COMACritic
+from utils.rl_utils import build_td_lambda_targets
 import torch as th
 from torch.optim import RMSprop
 
@@ -147,7 +147,7 @@ class COMAISLearner:
             self.critic_training_steps += 1
 
             running_log["critic_loss"].append(loss.item())
-            running_log["critic_grad_norm"].append(grad_norm)
+            running_log["critic_grad_norm"].append(grad_norm.cpu())
             mask_elems = mask_t.sum().item()
             running_log["td_error_abs"].append((masked_td_error.abs().sum().item() / mask_elems))
             running_log["q_taken_mean"].append((q_taken * mask_t).sum().item() / mask_elems)

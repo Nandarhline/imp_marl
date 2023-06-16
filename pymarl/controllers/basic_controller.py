@@ -1,5 +1,5 @@
-from pymarl.modules.agents import REGISTRY as agent_REGISTRY
-from pymarl.components.action_selectors import REGISTRY as action_REGISTRY
+from modules.agents import REGISTRY as agent_REGISTRY
+from components.action_selectors import REGISTRY as action_REGISTRY
 import torch as th
 
 
@@ -70,6 +70,9 @@ class BasicMAC:
 
     def load_models(self, path):
         self.agent.load_state_dict(th.load("{}/agent.th".format(path), map_location=lambda storage, loc: storage))
+
+    def n_learnable_param(self):
+        return sum(p.numel() for p in self.agent.parameters() if p.requires_grad)
 
     def _build_agents(self, input_shape):
         self.agent = agent_REGISTRY[self.args.agent](input_shape, self.args)

@@ -5,15 +5,15 @@ import time
 import threading
 import torch as th
 from types import SimpleNamespace as SN
-from pymarl.utils.logging import Logger
-from pymarl.utils.timehelper import time_left, time_str
+from utils.logging import Logger
+from utils.timehelper import time_left, time_str
 from os.path import dirname, abspath
 
-from pymarl.learners import REGISTRY as le_REGISTRY
-from pymarl.runners import REGISTRY as r_REGISTRY
-from pymarl.controllers import REGISTRY as mac_REGISTRY
-from pymarl.components.episode_buffer import ReplayBuffer
-from pymarl.components.transforms import OneHot
+from learners import REGISTRY as le_REGISTRY
+from runners import REGISTRY as r_REGISTRY
+from controllers import REGISTRY as mac_REGISTRY
+from components.episode_buffer import ReplayBuffer
+from components.transforms import OneHot
 
 
 def run(_run, _config, _log):
@@ -79,11 +79,11 @@ def run_sequential(args, logger):
     runner = r_REGISTRY[args.runner](args=args, logger=logger)
     # Set up schemes and groups here
     env_info = runner.get_env_info()
-
     args.n_agents = env_info["n_agents"]
-
     args.n_actions = env_info["n_actions"]
     args.state_shape = env_info["state_shape"]
+    args.unit_dim = env_info["unit_dim"]
+
     scheme = {
         "state": {"vshape": env_info["state_shape"]},
         "obs": {"vshape": env_info["obs_shape"], "group": "agents"},
@@ -170,6 +170,7 @@ def run_sequential(args, logger):
     logger.console_logger.info(
         "Beginning training for {} timesteps".format(args.t_max))
     print("start")
+    print("Number of trainable param=", learner.n_learnable_param())
     while runner.t_env <= args.t_max:
 
         # Run for a whole episode at a time
@@ -185,8 +186,13 @@ def run_sequential(args, logger):
 
             if episode_sample.device != args.device:
                 episode_sample.to(args.device)
-
-            learner.train(episode_sample, runner.t_env, episode)
+            if args.learner == "coma_learner":
+                # Online training, therefore buffer.sample()
+                # gives always the last batch_size_run played episodes
+                for i in range(args.batch_size_run):
+                    learner.train(episode_sample, runner.t_env, episode)
+            else:
+                learner.train(episode_sample, runner.t_env, episode)
 
         # Execute test runs once in a while
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
