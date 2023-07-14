@@ -14,6 +14,8 @@ Additionally, you will be able to:
 
 This repository has been developed and is maintained by Pascal Leroy & Pablo G. Morato.
 
+Please consider opening an issue or a pull request to help us improve this repository.
+
 ![imp](imp_intro.png)
 
 ## Main requirements:
@@ -22,10 +24,11 @@ To work with our environments, one only needs to install [Numpy](https://numpy.o
 However, to reproduce our results, more packages are required and installation instructions are provided [here](pymarl/README.md).
 
 ## Tutorials
-- [Create your own environment scenario](imp_env/new_imp_env_tutorial.ipynb)
+- [Create your own IMP environment scenario](imp_env/new_imp_env_tutorial.ipynb)
 - [IMP's API explained](imp_wrappers/wrapper_explained.md)
-- [Train agents like in the paper and/or **reproduce** the results](pymarl/README.md)
+- [**Reproduce** the paper results](REPROD_EXP.md)
 - [Retrieve directly the results](results_scripts/README.md)
+- [Train your own MARL agents with PyMarl](pymarl/EXEC_PYMARL.md)
 
 ## Sets of environments available:
 - [(Correlated and uncorrelated) k-out-of-n system with components subject to fatigue deterioration.](./imp_env/struct_env.py)
@@ -33,9 +36,16 @@ However, to reproduce our results, more packages are required and installation i
 
 **Note: A campaign cost can be activated in any environment.**
 
+## Available wrappers with examples: 
+- Ready: [**PyMarl**](imp_wrappers/[pymarl_ma_struct.py): Multi and single agent wrappers.
+- WIP: [**Gym**](): single-agent wrapper.
+- WIP: [**PettingZoo**]() : multi-agent wrapper.
+- WIP: [**MARLlib**](): TBD
+- WIP: [**TorchRL**](): TBD
+
 ## PyMarl algorithms available:
 
-To train agents with PyMarl and one of the following algorithms, instructions are available [here](pymarl/README.md):
+To train agents with PyMarl and one of the following algorithms, instructions are available [here](pymarl/EXEC_PYMARL.md):
 
 - [**QMIX**: QMIX: Monotonic Value Function Factorisation for Deep Multi-Agent Reinforcement Learning](https://arxiv.org/abs/1803.11485)
 - [**QVMIX**: QVMix and QVMix-Max: Extending the Deep Quality-Value Family of Algorithms to Cooperative Multi-Agent Reinforcement Learning](https://arxiv.org/abs/2012.12062)
@@ -65,3 +75,14 @@ while not done:
 ```   
 
 ## Citation
+If you use IMP-MARL in your work, please consider citing our paper:
+```
+@misc{leroy2023impmarl,
+      title={IMP-MARL: a Suite of Environments for Large-scale Infrastructure Management Planning via MARL}, 
+      author={Pascal Leroy and Pablo G. Morato and Jonathan Pisane and Athanasios Kolios and Damien Ernst},
+      year={2023},
+      eprint={2306.11551},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
