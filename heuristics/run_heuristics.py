@@ -1,18 +1,18 @@
-from heuristics.heuristics_intervals import Heuristics
+from heuristics_intervals import Heuristics
 import timeit
 
 if __name__ == '__main__':
 
     #### Search
-    search = True
-    n_comp = 5
-    k_comp = 4
+    search = False
+    n_comp = 3
+    k_comp = 3
     discount_reward = 0.95
-    eval_size = 2000
+    eval_size = 1000
 
     #### Evaluation
-    insp_int = 10
-    insp_comp = 5
+    insp_int = 35
+    insp_comp = 10
 
 
     h1 = Heuristics(n_comp,

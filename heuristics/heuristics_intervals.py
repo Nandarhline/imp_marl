@@ -53,7 +53,7 @@ class Heuristics():
             if return_heur > ret_opt:
                 ret_opt = return_heur
                 ind_opt = ind
-                print('opt', return_heur, 'insp_int', insp_list[ind], 'n_comp', comp_list[ind])
+            print('opt', return_heur, 'insp_int', insp_list[ind], 'n_comp', comp_list[ind])
         self.opt_heur = {"opt_reward_mean": ret_opt,
                          "insp_interv": insp_list[ind_opt],
                          "insp_comp": comp_list[ind_opt]}

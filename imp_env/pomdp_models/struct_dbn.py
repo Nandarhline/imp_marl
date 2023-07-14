@@ -2,7 +2,7 @@ import numpy as np
 import scipy.stats as stats
 import math
 
-class Pomdp:
+class dynamicBN:
 
     def __init__(self, config = {"time_variant_q": False, "epsilonq_std": None}):
         self.T = config["T"] 
@@ -18,6 +18,7 @@ class Pomdp:
 
     
     def crack_growth(self, cg_params = None):
+        np.random.seed(0)
         lnC_mean = cg_params["lnC_mean"]
         lnC_std = cg_params["lnC_std"]
         m = cg_params["m"]
@@ -68,7 +69,7 @@ class Pomdp:
             self.d_interv = 0
             self.d_interv = np.append(self.d_interv, np.linspace(self.d0_mean, self.dcrit, n_dstates-1))
             self.d_interv = np.append(self.d_interv, 1e20)
-            self.q_interv = np.linspace(0, np.max(self.qq)+0.1, n_qstates)
+            self.q_interv = np.linspace(1e-20, np.max(self.qq)+0.1, n_qstates)
             self.q_interv = np.append(self.q_interv, 1e20)
             det_rates = self.T+1
             nsamples = self.dd.shape[-1]   
@@ -133,7 +134,7 @@ class Pomdp:
     def observation_models(self, obs_params = {"inspect": True, 
                                                "beta0": 7.3704, "beta1": 2.092, "sigma_epsilon": 4.189, "det_thres": 5.4898,
                                                "monitor": False,
-                                               "error_std": None}):
+                                               "error_cov": None}):
         inspect = obs_params["inspect"] if obs_params.get("inspect") is not None\
             else True      
         beta0 = obs_params["beta0"] if obs_params.get("beta0") is not None\
@@ -146,7 +147,7 @@ class Pomdp:
             else 5.4898
         monitor = obs_params["monitor"] if obs_params.get("monitor") is not None\
             else False
-        error_std = obs_params["error_std"] if obs_params["monitor"] is True\
+        error_cov = obs_params["error_cov"] if obs_params["monitor"] is True\
             else None
         
         n_dstates = len(self.d_interv)-1 
@@ -173,11 +174,11 @@ class Pomdp:
             q_ref = np.append(q_ref, self.q_interv[1:])
             q_ref[-1] = 1e100
             q_ref = np.tile(q_ref,(100,1)).T
-            qobs_std = np.ones((100,))*error_std           
+            qobs_cov = np.ones((100,))*error_cov           
             qobs = np.zeros((n_qstates, n_qstates))
             for i in range(n_qstates):
                 qobs_mean = np.linspace(self.q_interv[i],self.q_interv[i+1],100)
-                qobs_cdf = stats.norm.cdf(q_ref, qobs_mean, qobs_std).T
+                qobs_cdf = stats.norm.cdf(q_ref, qobs_mean, qobs_mean*qobs_cov).T
                 qobs_cdf[:,-1] = 1 # to make sure the probabilities sum to one
                 qobs_pdf = np.diff(qobs_cdf)/100
                 qobs[i,:] += np.sum(qobs_pdf, axis=0) 
