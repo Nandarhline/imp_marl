@@ -13,15 +13,12 @@ class Struct_twin(ImpEnv):
         k_comp: Integer indicating the number 'k' (out of n) components in the system.
         campaign_cost: Boolean indicating whether a global campaign cost is considered in the reward model.
         ep_length: Integer indicating the number of time steps in the finite horizon.
-        proba_size: Integer indicating the number of bins considered in the discretisation of the damage probability.
+        n_st_comp: Integer indicating the number of bins considered in the discretisation of the damage probability.
         n_obs_inspection: Integer indicating the number of potential outcomes resulting from an inspection.
         actions_per_agent: Integer indicating the number of actions that an agent can take.
         initial_damage_proba: Numpy array containing the initial damage probability.
         transition_model: Numpy array containing the transition model that drives the environment dynamics.
         inspection_model: Numpy array containing the inspection model.
-        initial_alpha: Numpy array contaning the containing the initial correlation factor.
-        initial_damage_proba_correlated: Numpy array containing the initial damage probability given the correlation factor.
-        damage_proba_after_repair_correlated: Numpy array containing the initial damage probability given the correlation factor after a repair is conducted.
         agent_list: Dictionary categorising the number of agents.
         time_step: Integer indicating the current time step.
         damage_proba: Numpy array contatining the current damage probability.
