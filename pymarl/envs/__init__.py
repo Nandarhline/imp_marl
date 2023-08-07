@@ -2,6 +2,7 @@ from functools import partial
 from imp_wrappers.pymarl_wrapper.MultiAgentEnv import MultiAgentEnv
 from imp_wrappers.pymarl_wrapper.pymarl_wrap_ma_struct import PymarlMAStruct
 from imp_wrappers.pymarl_wrapper.pymarl_wrap_sa_struct import PymarlSAStruct
+from imp_wrappers.pymarl_wrapper.pymarl_wrap_twin import PymarlMATwin
 
 
 def env_fn(env, **kwargs) -> MultiAgentEnv:
@@ -11,3 +12,4 @@ def env_fn(env, **kwargs) -> MultiAgentEnv:
 REGISTRY = {}
 REGISTRY["struct_marl"] = partial(env_fn, env=PymarlMAStruct)
 REGISTRY["struct_sarl"] = partial(env_fn, env=PymarlSAStruct)
+REGISTRY["digital_twin"] = partial(env_fn, env=PymarlMATwin)

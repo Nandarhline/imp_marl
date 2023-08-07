@@ -8,7 +8,7 @@ from imp_env.struct_envtwin import Struct_twin
 from imp_wrappers.pymarl_wrapper.MultiAgentEnv import MultiAgentEnv
 
 
-class PymarlMAStruct(MultiAgentEnv):
+class PymarlMATwin(MultiAgentEnv):
     """
     Wrapper for Struct_twin and Owf_twin respecting the interface of PyMARL.
 
