@@ -13,7 +13,7 @@ class Struct_twin(ImpEnv):
         k_comp: Integer indicating the number 'k' (out of n) components in the system.
         campaign_cost: Boolean indicating whether a global campaign cost is considered in the reward model.
         ep_length: Integer indicating the number of time steps in the finite horizon.
-        n_st_comp: Integer indicating the number of bins considered in the discretisation of the damage probability.
+        proba_size_d: Integer indicating the number of bins considered in the discretisation of the damage probability.
         n_obs_inspection: Integer indicating the number of potential outcomes resulting from an inspection.
         actions_per_agent: Integer indicating the number of actions that an agent can take.
         initial_damage_proba: Numpy array containing the initial damage probability.
@@ -62,7 +62,7 @@ class Struct_twin(ImpEnv):
 
         self.d_interv = drmodel['d_interv'] 
         self.q_interv = drmodel['q_interv'] 
-        self.n_st_comp = len(self.d_interv)-1  # Crack states (fatigue hotspot damage states)
+        self.proba_size_d = len(self.d_interv)-1  # Crack states (fatigue hotspot damage states)
         self.proba_size_q = len(self.q_interv)-1  # Stress states (fatigue hotspot damage states)
         
         self.n_obs = 2*self.proba_size_q 
@@ -115,7 +115,7 @@ class Struct_twin(ImpEnv):
         self.d_rate = np.zeros((self.n_comp, 1), dtype=int)
         self.observations = {}
         for i in range(self.n_comp):
-            belief_dq = np.reshape(self.damage_proba[i,:], [self.n_st_comp,self.proba_size_q])
+            belief_dq = np.reshape(self.damage_proba[i,:], [self.proba_size_d,self.proba_size_q])
             d_margin = np.sum(belief_dq, axis=1)
             q_margin = np.sum(belief_dq, axis=0)
             self.observations[self.agent_list[i]] = np.concatenate(
@@ -154,7 +154,7 @@ class Struct_twin(ImpEnv):
         
         self.observations = {}
         for i in range(self.n_comp):
-            belief_dq = np.reshape(next_damage_proba[i,:], [self.n_st_comp,self.proba_size_q])
+            belief_dq = np.reshape(next_damage_proba[i,:], [self.proba_size_d,self.proba_size_q])
             d_margin = np.sum(belief_dq, axis=1)
             q_margin = np.sum(belief_dq, axis=0)
             self.observations[self.agent_list[i]] = np.concatenate(
@@ -331,5 +331,5 @@ class Struct_twin(ImpEnv):
             qobs_cdf = stats.norm.cdf(qint, qobs_mean, (0.07+epsilon)*qobs_mean).T
             qobs_pdf = np.diff(qobs_cdf)/100
             qobs[k,:] += np.sum(qobs_pdf, axis=0) 
-        qobs = np.tile(qobs,(self.n_st_comp,1))
+        qobs = np.tile(qobs,(self.proba_size_d,1))
         return qobs, epsilon
