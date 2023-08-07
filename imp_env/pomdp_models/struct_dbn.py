@@ -36,13 +36,13 @@ class dynamicBN:
         C = np.random.lognormal(lnC_mean, lnC_std, nsamples) 
         Y_mean = np.log(Ynormal_mean)
         Y_std = (np.log(Ynormal_cov**2+1))**0.5
-        Y = np.random.lognormal(Y_mean, Y_std, nsamples)  
+        Y = np.random.lognormal(Y_mean, Y_std, nsamples )  
         
         self.dd = np.zeros((self.T+1, nsamples))
         self.dd[0,:] = d0
         
         if self.time_variant_q is True:
-            epsilonq = np.random.normal(0, self.epsilonq_std, nsamples)
+            # epsilonq = np.random.normal(1, self.epsilonq_std, nsamples)
             self.qq = np.zeros((self.T+1, nsamples))
             self.qq[0,:] = q0
         
@@ -52,9 +52,10 @@ class dynamicBN:
             self.dd[t+1,:] = dt
             d0 = dt
             if self.time_variant_q is True:
-                qt = q0+epsilonq # uncertainty of q increases
+                epsilonq = np.random.normal(1, self.epsilonq_std, nsamples)
+                qt = q0*epsilonq # uncertainty of q increases
                 while (qt<0).sum() > 0:
-                    qt[qt<0] = q0[qt<0]+np.random.normal(0, self.epsilonq_std , (qt<0).sum())
+                    qt[qt<0] = q0[qt<0]*np.random.normal(1, self.epsilonq_std , (qt<0).sum())
                 q0 = qt
                 self.qq[t+1,:] = qt
                 S = qt*math.gamma(1+1/0.8)

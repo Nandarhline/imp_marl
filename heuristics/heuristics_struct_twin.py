@@ -74,7 +74,7 @@ class Heuristics():
     def episode_insinterv(self, insp_int, comp_insp):
         rew_total_ = 0
         done_ = False
-        obs = np.ones((self.struct_envtwin.n_comp,))*self.struct_envtwin.n_st_stress*2
+        obs = np.ones((self.struct_envtwin.n_comp,))*self.struct_envtwin.proba_size_q*2
         self.struct_envtwin.reset()
         action = {}
         for agent in self.struct_envtwin.agent_list:
@@ -82,12 +82,12 @@ class Heuristics():
         while not done_:
             action_ = action.copy()
             if (self.struct_envtwin.time_step%insp_int)==0 and self.struct_envtwin.time_step>0:
-                pf = np.sum(self.struct_envtwin.beliefs[:, -self.struct_envtwin.n_st_stress:], axis=1)
+                pf = np.sum(self.struct_envtwin.damage_proba[:, -self.struct_envtwin.proba_size_q:], axis=1)
                 inspection_index = (-pf).argsort()[:comp_insp] 
                 for index in inspection_index:
                     action_[self.struct_envtwin.agent_list[index]] = 1
-            if np.sum(obs) < self.struct_envtwin.n_comp*self.struct_envtwin.n_st_stress*2: # at least one observation in an element
-                index_repair = np.where(obs<self.struct_envtwin.n_st_stress)[0]
+            if np.sum(obs) < self.struct_envtwin.n_comp*self.struct_envtwin.proba_size_q*2: # at least one observation in an element
+                index_repair = np.where(obs<self.struct_envtwin.proba_size_q)[0]
                 if len(index_repair) > 0:
                     for index in index_repair:
                         action_[self.struct_envtwin.agent_list[index]] = 4
@@ -138,7 +138,7 @@ class Heuristics():
     def episode_sensinterv(self, sens_int, comp_insp):
         rew_total_ = 0
         done_ = False
-        obs = np.ones((self.struct_envtwin.n_comp,))*self.struct_envtwin.n_st_stress*2
+        obs = np.ones((self.struct_envtwin.n_comp,))*self.struct_envtwin.proba_size_q*2
         self.struct_envtwin.reset()
         action = {}
         for agent in self.struct_envtwin.agent_list:
@@ -146,12 +146,12 @@ class Heuristics():
         while not done_:
             action_ = action.copy()
             if (self.struct_envtwin.time_step%sens_int)==0 and self.struct_envtwin.time_step>0:
-                pf = np.sum(self.struct_envtwin.beliefs[:, -self.struct_envtwin.n_st_stress:], axis=1)
+                pf = np.sum(self.struct_envtwin.damage_proba[:, -self.struct_envtwin.proba_size_q:], axis=1)
                 sensor_index = (-pf).argsort()[:comp_insp]
                 for index in sensor_index:
                     action_[self.struct_envtwin.agent_list[index]] = 2
-            if np.sum(obs) < self.struct_envtwin.n_comp*self.struct_envtwin.n_st_stress*2:
-                index_repair = np.where(obs%self.struct_envtwin.n_st_stress>3)[0]
+            if np.sum(obs) < self.struct_envtwin.n_comp*self.struct_envtwin.proba_size_q*2:
+                index_repair = np.where(obs%self.struct_envtwin.proba_size_q>3)[0]
                 if len(index_repair) > 0:
                     for index in index_repair:
                         action_[self.struct_envtwin.agent_list[index]] = 4

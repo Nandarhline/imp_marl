@@ -51,7 +51,6 @@ class Struct_twin(ImpEnv):
         self.k_comp = self.n_comp - 1 if config["k_comp"] is None \
             else config["k_comp"]
         self.campaign_cost = config["campaign_cost"]
-        self.time = 0
         self.ep_length = 20  # Horizon length
 
         self.obs_per_agent_multi = None  
@@ -64,24 +63,23 @@ class Struct_twin(ImpEnv):
         self.d_interv = drmodel['d_interv'] 
         self.q_interv = drmodel['q_interv'] 
         self.n_st_comp = len(self.d_interv)-1  # Crack states (fatigue hotspot damage states)
-        self.n_st_stress = len(self.q_interv)-1  # Stress states (fatigue hotspot damage states)
+        self.proba_size_q = len(self.q_interv)-1  # Stress states (fatigue hotspot damage states)
         
-        self.n_obs = 2*self.n_st_stress 
-        # Total number of observations (crack detected * n_st_stress + crack not detected * n_st_stress)
+        self.n_obs = 2*self.proba_size_q 
+        # Total number of observations (crack detected * proba_size_q + crack not detected * proba_size_q)
         self.actions_per_agent = 6
         
         # To build oservation model of digital twin 
-        self.q_ref = -1e100
-        self.q_ref = np.append(self.q_ref, self.q_interv[1:])
+        self.q_ref = self.q_interv.copy()
+        self.q_ref[0] = -1e100
         self.q_ref[-1] = 1e100
-        self.q_ref = np.tile(self.q_ref,(100,1)).T
         
         # Initial probability distributions for crack-stress joint state, sensor state and digital twin uncertainty
-        self.belief0 = np.tile(drmodel['belief0'],(self.n_comp,1))
-        self.belief0_twin = np.tile(drmodel['belief0_twin'],(self.n_comp,1))          
-        self.belief0_eps = np.tile(drmodel['belief0_eps'],(self.n_comp,1))
+        self.initial_damage_proba = np.tile(drmodel['belief0'],(self.n_comp,1))
+        self.initial_twin_state = np.tile(drmodel['belief0_twin'],(self.n_comp,1))          
+        self.initial_eps = np.tile(drmodel['belief0_eps'],(self.n_comp,1))
         
-        # Transition model for sensor state
+        # Transition models 
         self.T0 = drmodel['T0'] 
         self.Tr = drmodel['Tr']
         self.T0_twin = drmodel['T0_twin']
@@ -96,9 +94,9 @@ class Struct_twin(ImpEnv):
         self.agent_list = ["agent_" + str(i) for i in range(self.n_comp)]
 
         self.time_step = 0
-        self.beliefs = self.belief0
-        self.beliefs_twin = self.belief0_twin
-        self.beliefs_eps = self.belief0_eps
+        self.damage_proba = self.initial_damage_proba
+        self.twin_state = self.initial_twin_state
+        self.epsilon_proba = self.initial_eps
         self.d_rate = np.zeros((self.n_comp, 1), dtype=int)
         self.observations = None
 
@@ -111,31 +109,41 @@ class Struct_twin(ImpEnv):
 
         # Choose the agent's belief
         self.time_step = 0
-        self.beliefs = self.belief0
-        self.beliefs_twin = self.belief0_twin
-        self.beliefs_eps = self.belief0_eps
+        self.damage_proba = self.initial_damage_proba
+        self.twin_state = self.initial_twin_state
+        self.epsilon_proba = self.initial_eps
         self.d_rate = np.zeros((self.n_comp, 1), dtype=int)
         self.observations = {}
         for i in range(self.n_comp):
-            belief_dq = np.reshape(self.beliefs[i,:], [self.n_st_comp,self.n_st_stress])
+            belief_dq = np.reshape(self.damage_proba[i,:], [self.n_st_comp,self.proba_size_q])
             d_margin = np.sum(belief_dq, axis=1)
             q_margin = np.sum(belief_dq, axis=0)
             self.observations[self.agent_list[i]] = np.concatenate(
-                (d_margin, q_margin, self.beliefs_eps[i], [self.time_step / self.ep_length]))
+                (d_margin, q_margin, [self.time_step / self.ep_length]))
 
         return self.observations
 
     def step(self, action: dict):
+        """ Transitions the environment by one time step based on the selected actions. 
+
+        Args:
+            action: Dictionary containing the actions assigned by each agent.
+
+        Returns:
+            observations: Dictionary with the damage probability received by the agents.
+            rewards: Dictionary with the rewards received by the agents.
+            done: Boolean indicating whether the final time step in the horizon has been reached.
+        """
         action_ = np.zeros(self.n_comp, dtype=int)
         for i in range(self.n_comp):
             action_[i] = action[self.agent_list[i]]
 
 
-        observation_, belief_prime, belief_twin_prime, belief_eps_prime, drate_prime = \
-            self.belief_update_uncorrelated(self.beliefs, self.beliefs_twin, self.beliefs_eps, 
+        observation_, next_damage_proba, next_twin_state, next_epsilon_proba, next_drate = \
+            self.belief_update_uncorrelated(self.damage_proba, self.twin_state, self.epsilon_proba, 
                 action_, self.d_rate)
 
-        reward_ = self.immediate_cost(self.beliefs, action_, belief_prime, self.d_rate)
+        reward_ = self.immediate_cost(self.damage_proba, action_, next_damage_proba, self.d_rate)
         reward = self.discount_reward ** self.time_step * reward_.item()  # Convert float64 to float
 
         rewards = {}
@@ -144,19 +152,18 @@ class Struct_twin(ImpEnv):
 
         self.time_step += 1
         
-
         self.observations = {}
         for i in range(self.n_comp):
-            belief_dq = np.reshape(belief_prime[i,:], [self.n_st_comp,self.n_st_stress])
+            belief_dq = np.reshape(next_damage_proba[i,:], [self.n_st_comp,self.proba_size_q])
             d_margin = np.sum(belief_dq, axis=1)
             q_margin = np.sum(belief_dq, axis=0)
             self.observations[self.agent_list[i]] = np.concatenate(
-                (d_margin, q_margin, belief_eps_prime[i], [self.time_step / self.ep_length]))
+                (d_margin, q_margin, [self.time_step / self.ep_length]))
 
-        self.beliefs = belief_prime
-        self.beliefs_twin = belief_twin_prime
-        self.beliefs_eps = belief_eps_prime
-        self.d_rate = drate_prime
+        self.damage_proba = next_damage_proba
+        self.twin_state = next_twin_state
+        self.epsilon_proba = next_epsilon_proba
+        self.d_rate = next_drate
 
         # An episode is done if the agent has reached the target
         done = self.time_step >= self.ep_length
@@ -187,11 +194,20 @@ class Struct_twin(ImpEnv):
         return PF_sys
 
     def immediate_cost(self, B, a, B_, drate):
-        """ immediate reward (-cost),
-         based on current damage state and action """
+        """ Computes the immediate reward (negative cost) based on current (and next) damage probability and action selected
+        
+            Args:
+                B: Numpy array with current damage probability.
+                a: Numpy array with actions selected.
+                B_: Numpy array with the next time step damage probability.
+                d_rate: Numpy array with current deterioration rates.
+            
+            Returns:
+                cost_system: Float indicating the reward received.
+        """
         cost_system = 0
-        PF = np.sum(B[:, -self.n_st_stress:], axis=1) # the last n_st_stress states (d is the outer loop)
-        PF_ = np.sum(B_[:, -self.n_st_stress:], axis=1).copy()
+        PF = np.sum(B[:, -self.proba_size_q:], axis=1) # the last proba_size_q states (d is the outer loop)
+        PF_ = np.sum(B_[:, -self.proba_size_q:], axis=1).copy()
         campaign_executed = False
         for i in range(self.n_comp):
             if a[i] == 4 or a[i] == 5: # Perfect repair
@@ -202,7 +218,7 @@ class Struct_twin(ImpEnv):
                     campaign_executed = True # Campaign executed
             else: # Do-nothing
                 Bplus = B[i, :].dot(self.T0[drate[i, 0]]) 
-                PF_[i] = np.sum(Bplus[-self.n_st_stress:])
+                PF_[i] = np.sum(Bplus[-self.proba_size_q:])
                 if a[i] == 1: # Inspection
                     cost_system += -1   
                     if self.campaign_cost and not campaign_executed:
@@ -236,19 +252,19 @@ class Struct_twin(ImpEnv):
         btwin_prime = np.zeros(btwin.shape) 
         beps_prime = beps.copy()
         ob = np.zeros(self.n_comp)
-        drate_prime = np.zeros((self.n_comp, 1), dtype=int)
+        next_drate = np.zeros((self.n_comp, 1), dtype=int)
         for i in range(self.n_comp):
-            ob[i] = 2*self.n_st_stress
+            ob[i] = 2*self.proba_size_q
             # twin_state = np.nonzero(np.random.multinomial(1, btwin[i,:]))[0][0]
             twin_state = np.nonzero(btwin[i,:])[0]
             # TRANSITION THE PHYSICAL TWIN
             if a[i] == 4 or a[i] == 5: # Perfect-repair                
                 b_prime[i, :] = b[i, :].dot(self.Tr[drate[i, 0]]) 
-                drate_prime[i, 0] = 0                 
+                next_drate[i, 0] = 0                 
                           
             else:   # Do-nothing
                 p1 = b[i, :].dot(self.T0[drate[i, 0]])
-                drate_prime[i, 0] = drate[i, 0] + 1     
+                next_drate[i, 0] = drate[i, 0] + 1     
                 if a[i] == 0 or a[i] == 2: # No-inspection
                     if twin_state == 0: # Belief update with load observation from physical sensor
                         prob_obs = self.O_monitor.T.dot(p1)
@@ -259,7 +275,7 @@ class Struct_twin(ImpEnv):
                         # Built the observation model on the go
                         qobs, epsilon = self.dtwin_observation_matrix(beps[i,:])
                         O = np.zeros(self.O_monitor.shape)
-                        O[:,0:self.n_st_stress] = qobs 
+                        O[:,0:self.proba_size_q] = qobs 
                         prob_obs = O.T.dot(p1)
                         s1 = np.nonzero(np.random.multinomial(1, prob_obs))[0][0]
                         b_prime[i, :] = p1*O[:,s1]/sum(p1*O[:,s1])    
@@ -278,7 +294,7 @@ class Struct_twin(ImpEnv):
                         # Built the observation model on the go
                         qobs, epsilon = self.dtwin_observation_matrix(beps[i,:])
                         O = np.zeros(self.O_ins_monitor.shape)
-                        O = np.concatenate((qobs.T*(self.O_ins[:,0]), qobs.T*(self.O_ins[:,self.n_st_stress])),axis=0).T
+                        O = np.concatenate((qobs.T*(self.O_ins[:,0]), qobs.T*(self.O_ins[:,self.proba_size_q])),axis=0).T
                         prob_obs = O.T.dot(p1)
                         s1 = np.nonzero(np.random.multinomial(1, prob_obs))[0][0]
                         b_prime[i, :] = p1*O[:,s1]/sum(p1*O[:,s1]) 
@@ -300,18 +316,19 @@ class Struct_twin(ImpEnv):
             else:  # Install sensor
                 btwin_prime[i,:] = btwin[i,:].dot(self.Ts_twin)
                 beps_prime[i,0] = 0.1
-        return ob, b_prime, btwin_prime, beps_prime, drate_prime
+        return ob, b_prime, btwin_prime, beps_prime, next_drate
 
     def dtwin_observation_matrix(self, beps):
         epsilon = np.random.normal(beps[0],beps[0]*beps[1],(1,1))
+        qint = np.tile(self.q_ref,(100,1)).T
         while epsilon < 0:
             epsilon = np.random.normal(beps[0],beps[0]*beps[1],(1,1))
         # qobs_std = np.ones((100,))*epsilon          
-        qobs = np.zeros((self.n_st_stress, self.n_st_stress))
-        for k in range(self.n_st_stress):
+        qobs = np.zeros((self.proba_size_q, self.proba_size_q))
+        for k in range(self.proba_size_q):
             qobs_mean = np.linspace(self.q_interv[k],self.q_interv[k+1],100)
             #Negative samples are taken as first bin q_ref[0] = -1e100
-            qobs_cdf = stats.norm.cdf(self.q_ref, qobs_mean, (0.07+epsilon)*qobs_mean).T
+            qobs_cdf = stats.norm.cdf(qint, qobs_mean, (0.07+epsilon)*qobs_mean).T
             qobs_pdf = np.diff(qobs_cdf)/100
             qobs[k,:] += np.sum(qobs_pdf, axis=0) 
         qobs = np.tile(qobs,(self.n_st_comp,1))

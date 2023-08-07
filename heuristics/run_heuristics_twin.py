@@ -1,4 +1,4 @@
-from heuristics_intervals_twin import Heuristics
+from heuristics_struct_twin import Heuristics
 import timeit
 
 if __name__ == '__main__':
