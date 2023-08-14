@@ -222,11 +222,11 @@ class Owf_twin(ImpEnv):
                     cost_system += -10 
                 elif a[(self.lev-1)*i+j] == 4 and j==1: # splash zone component
                     cost_system += -30
-                # Perfec t repair - install sensor    
+                # Perfect repair - install sensor    
                 elif a[(self.lev-1)*i+j] == 5 and j==0: # atomospheric component
-                    cost_system += -11 if self.campaign_cost else  -13 
+                    cost_system += -12 if self.campaign_cost else  -16 
                 elif a[(self.lev-1)*i+j] == 5 and j==1: # splash zone component
-                    cost_system +=  -33 if self.campaign_cost else -39
+                    cost_system +=  -36 if self.campaign_cost else -48
                 # Do nothing
                 else:
                     Bplus = B[i, j, :].dot(self.T0[j, drate[i, j, 0]]) 
@@ -238,22 +238,22 @@ class Owf_twin(ImpEnv):
                         cost_system += -3 if self.campaign_cost else  -9 
                     # Do nothing - Install sensor
                     elif a[(self.lev-1)*i+j] == 2 and j==0: # atomospheric component
-                        cost_system += -3 if self.campaign_cost else  -9
+                        cost_system += -2 if self.campaign_cost else  -6
                     elif a[(self.lev-1)*i+j] == 2 and j==1: # splash zone component
-                        cost_system += -9 if self.campaign_cost else  -27     
+                        cost_system += -6 if self.campaign_cost else  -18     
                     # Do nothing - Inspection - Install sensor
                     elif a[(self.lev-1)*i+j] == 3 and j==0: # atomospheric component
-                        cost_system += -4 if self.campaign_cost else  -12
+                        cost_system += -3 if self.campaign_cost else  -9
                     elif a[(self.lev-1)*i+j] == 3 and j==1: # splash zone component
-                        cost_system += -12 if self.campaign_cost else  -36
+                        cost_system += -9 if self.campaign_cost else  -27
                         
         PfSyS = self.pf_sys(PF)
         PfSyS_ = self.pf_sys(PF_)
         for i in range(self.n_owt):
             if PfSyS_[i] < PfSyS[i]:
-                cost_system += PfSyS_[i] * (-1000)
+                cost_system += PfSyS_[i] * (-5000)
             else:
-                cost_system += (PfSyS_[i] - PfSyS[i]) * (-1000)
+                cost_system += (PfSyS_[i] - PfSyS[i]) * (-5000)
         if self.campaign_cost and np.sum(a)>0:  # There is at least one inspection or repair
             cost_system += -10
         return cost_system
@@ -280,8 +280,8 @@ class Owf_twin(ImpEnv):
         next_drate = np.zeros((self.n_owt, self.lev, 1), dtype=int)
         for i in range(self.n_owt):
             for j in range(self.lev-1):
+                # print(twin_state[i,j,])
                 twin_presence = np.nonzero(twin_state[i, j, :])[0][0]
-
                 # TRANSITION THE PHYSICAL TWIN
                 if action[(self.lev - 1) * i + j] == 4 or action[(self.lev - 1) * i + j] == 5:
                     next_damage_proba[i, j, :] = damage_proba[i, j, :].dot(self.Tr[j, drate[i, j, 0]]) 

@@ -1,12 +1,13 @@
-from heuristics_struct_twin import Heuristics
+from heuristics_owf_twin import Heuristics
 import timeit
 
 if __name__ == '__main__':
 
-    n_comp = 3
-    k_comp = 3
+    n_comp = 1
+    lev = 3
     discount_reward = 0.95
-    eval_size = 100
+    campaign_cost = True
+    eval_size = 1000
     
     #### Search or evaluate inspection intervals and no of components
     search_ins = True
@@ -17,17 +18,19 @@ if __name__ == '__main__':
     
     #### Search or evaluate install-sensor intervals and no of components
     search_sens = True
-    eval_sens = True
+    eval_sens = False
     # Eval values
     sens_int = 22
     sens_comp = 10
     
     h1 = Heuristics(n_comp,
+                    lev,
                      # Number of structure
                      discount_reward,
                      # float [0,1] importance of
                      # short-time reward vs long-time reward
-                     k_comp)
+                     campaign_cost
+                    )
     
     # Equadistant inspection heuristics
     if search_ins:
