@@ -12,6 +12,7 @@ class Heuristics():
                  # float [0,1] importance of
                  # short-time reward vs long-time reward
                  campaign_cost: bool = False,
+                 virtual_sensor: bool = True,
                  # campaign_cost = True=campaign cost taken into account
                  seed=None):
 
@@ -19,13 +20,15 @@ class Heuristics():
         self.lev = lev
         self.discount_reward = discount_reward
         self.campaign_cost = campaign_cost
+        self.virtual_sensor = virtual_sensor
         self._seed = seed
         if seed is not None:
             np.random.seed(seed)
         self.config = {"n_owt": n_owt,
                        "lev": lev,
                        "discount_reward": discount_reward,
-                       "campaign_cost": campaign_cost}
+                       "campaign_cost": campaign_cost,
+                       "virtual_sensor": virtual_sensor}
         self.owf_env = Owf_twin(self.config)
         self.date_record = datetime.now().strftime("%Y_%m_%d_%H%M%S")
 
@@ -60,7 +63,10 @@ class Heuristics():
         isExist = path.exists(path_results)
         if not isExist:
             makedirs(path_results)
-        np.savez('heuristics/Owf_Results/insinterv_heuristics_'+ str(self.n_owt) + '_' + str(self.lev) + camp_file + '_' + self.date_record,
+        np.savez('heuristics/Owf_Results/insinterv_heuristics_VM'
+                 + str(self.virtual_sensor) + '_' 
+                 + str(self.n_owt) + '_' + str(self.lev) + camp_file + '_' 
+                 + self.date_record,
                   ret_total = ret_total, opt_heur = self.opt_heur, config=self.config, seed_test=self._seed)
         return self.opt_heur
 
@@ -123,11 +129,18 @@ class Heuristics():
                          "sens_interv": sens_list[ind_opt],
                          "sens_comp": comp_list[ind_opt]}
         
+        if not self.campaign_cost:
+            camp_file = 'ref'
+        else:
+            camp_file = 'camp'
         path_results = "heuristics/Results"
         isExist = path.exists(path_results)
         if not isExist:
             makedirs(path_results)
-        np.savez('heuristics/Owf_Results/sensinterv_heuristics_'+ str(self.n_owt) + '_' + str(self.lev) + camp_file + '_' + self.date_record,
+        np.savez('heuristics/Owf_Results/sensinterv_heuristics_VM'
+                 + str(self.virtual_sensor) + '_' 
+                 + str(self.n_owt) + '_' + str(self.lev) + camp_file + '_' 
+                 + self.date_record,
                   ret_total = ret_total, opt_heur = self.opt_heur, config=self.config, seed_test=self._seed)
         return self.opt_heur
     

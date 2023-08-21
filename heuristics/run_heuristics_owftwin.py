@@ -7,6 +7,7 @@ if __name__ == '__main__':
     lev = 3
     discount_reward = 0.95
     campaign_cost = True
+    virtual_sensor = True
     eval_size = 1000
     
     #### Search or evaluate inspection intervals and no of components
@@ -18,7 +19,7 @@ if __name__ == '__main__':
     
     #### Search or evaluate install-sensor intervals and no of components
     search_sens = True
-    eval_sens = False
+    eval_sens = True
     # Eval values
     sens_int = 22
     sens_comp = 10
@@ -29,7 +30,8 @@ if __name__ == '__main__':
                      discount_reward,
                      # float [0,1] importance of
                      # short-time reward vs long-time reward
-                     campaign_cost
+                     campaign_cost,
+                     virtual_sensor
                     )
     
     # Equadistant inspection heuristics

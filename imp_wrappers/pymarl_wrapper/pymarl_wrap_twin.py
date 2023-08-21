@@ -30,6 +30,7 @@ class PymarlMATwin(MultiAgentEnv):
                  obs_multiple: bool = False,
                  obs_all_d_rate: bool = False,
                  campaign_cost: bool = False,
+                 virtual_sensor: bool = True,
                  seed=None):
         """
         Initialise based on the full configuration.
@@ -55,6 +56,7 @@ class PymarlMATwin(MultiAgentEnv):
             obs_multiple: (bool) Obs contains the concatenation of all obs
             obs_all_d_rate: (bool) Obs contains the concatenation of all drate
             campaign_cost: (bool) campaign_cost = True=campaign cost taken into account
+            virtual_sensor: (bool) virtual_sensor = True=virtual sensor is trained after installing a physical sensor
             seed: (int) seed for the random number generator
         """
         # Check struct type and default values
@@ -77,7 +79,8 @@ class PymarlMATwin(MultiAgentEnv):
                and isinstance(obs_d_rate, bool) \
                and isinstance(obs_multiple, bool) \
                and isinstance(obs_all_d_rate, bool) \
-               and isinstance(campaign_cost, bool), "Error in env parameters"
+               and isinstance(campaign_cost, bool) \
+               and isinstance(virtual_sensor, bool), "Error in env parameters"
         assert 0 <= discount_reward <= 1, "Error in discount_reward"
         assert not (obs_d_rate and obs_all_d_rate), "Error in env parameters"
         assert state_obs or state_d_rate, "Error in env parameters"
@@ -95,6 +98,7 @@ class PymarlMATwin(MultiAgentEnv):
         self.obs_multiple = obs_multiple
         self.obs_all_drate = obs_all_d_rate
         self.campaign_cost = campaign_cost
+        self.virtual_sensor = virtual_sensor
         self._seed = seed
 
         if struct_type == "struct":
@@ -108,7 +112,9 @@ class PymarlMATwin(MultiAgentEnv):
             self.config = {"n_owt": n_comp,
                            "lev": self.lev,
                            "discount_reward": discount_reward,
-                           "campaign_cost": campaign_cost}
+                           "campaign_cost": campaign_cost,
+                           "virtual_sensor": virtual_sensor
+                           }
 
             self.struct_env = Owf_twin(self.config)
             self.n_agents = self.struct_env.n_agents

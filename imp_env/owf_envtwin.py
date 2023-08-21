@@ -41,25 +41,33 @@ class Owf_twin(ImpEnv):
             config = {"n_owt": 2,
                       "lev": 3,
                       "discount_reward": 1,
-                      "campaign_cost": False}
+                      "campaign_cost": False,
+                      "virtual_sensor": True}
         assert "n_owt" in config and \
                "lev" in config and \
                "discount_reward" in config and \
-               "campaign_cost" in config, \
+               "campaign_cost" in config and \
+               "virtual_sensor" in config, \
             "Missing env config"
 
         self.n_owt = config["n_owt"]  
         self.lev = config["lev"]
         self.discount_reward = config["discount_reward"]
         self.campaign_cost = config["campaign_cost"]
+        self.virutal_sensor = config["virtual_sensor"]
         self.n_comp = self.n_owt*self.lev
         self.n_agents = self.n_owt*(self.lev-1)
         self.ep_length = 20 
 
         # Loading the underlying transition and inspection models
-        drmodel = np.load(os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            'pomdp_models/Owf203020_Tw03.npz'))
+        if self.virutal_sensor is True:
+            drmodel = np.load(os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                'pomdp_models/Owf203020_WithVM.npz'))
+        else:
+            drmodel = np.load(os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                'pomdp_models/Owf203020_WithoutVM.npz'))
 
         self.d_interv = drmodel['d_interv']
         self.q_interv = drmodel['q_interv'] 
