@@ -7,7 +7,7 @@ class Heuristics():
     def __init__(self,
                  n_owt: int = 1,
                  # Number of structure
-                 lev: int = 3,
+                 comps: list = [4, 4, 1],
                  discount_reward: float = 0.95,
                  # float [0,1] importance of
                  # short-time reward vs long-time reward
@@ -17,7 +17,8 @@ class Heuristics():
                  seed=None):
 
         self.n_owt = n_owt
-        self.lev = lev
+        self.comps = comps
+        self.lev = np.sum(np.array(comps))
         self.discount_reward = discount_reward
         self.campaign_cost = campaign_cost
         self.virtual_sensor = virtual_sensor
@@ -25,7 +26,7 @@ class Heuristics():
         if seed is not None:
             np.random.seed(seed)
         self.config = {"n_owt": n_owt,
-                       "lev": lev,
+                       "comps": comps,
                        "discount_reward": discount_reward,
                        "campaign_cost": campaign_cost,
                        "virtual_sensor": virtual_sensor}
@@ -91,13 +92,13 @@ class Heuristics():
         while not done_:
             action_ = action.copy()
             if (self.owf_env.time_step%insp_int)==0 and self.owf_env.time_step>0:
-                beliefs_comp = np.reshape(self.owf_env.damage_proba[:,:-1,:], (self.owf_env.n_agents, -1))
+                beliefs_comp = np.reshape(self.owf_env.damage_proba[:,:-self.owf_env.n_mdcomp,:], (self.owf_env.n_agents, -1))
                 pf = np.sum(beliefs_comp[:,-self.owf_env.proba_size_q:],axis=1)
                 inspection_index = (-pf).argsort()[:comp_insp]
                 for index in inspection_index:
                     action_[self.owf_env.agent_list[index]] = 1
             if np.sum(obs) < self.owf_env.n_owt*self.owf_env.lev*self.owf_env.proba_size_q*2:
-                obs_ag = np.reshape(obs[:,:-1], (self.owf_env.n_agents, -1) )
+                obs_ag = np.reshape(obs[:,:-self.owf_env.n_mdcomp], (self.owf_env.n_agents, -1) )
                 index_repair = np.where(obs_ag<self.owf_env.proba_size_q)[0]
                 if len(index_repair) > 0:
                     for index in index_repair:
@@ -165,13 +166,13 @@ class Heuristics():
         while not done_:
             action_ = action.copy()
             if (self.owf_env.time_step%sens_int)==0 and self.owf_env.time_step>0:
-                beliefs_comp = np.reshape(self.owf_env.damage_proba[:,:-1,:], (self.owf_env.n_agents, -1))
+                beliefs_comp = np.reshape(self.owf_env.damage_proba[:,:-self.owf_env.n_mdcomp,:], (self.owf_env.n_agents, -1))
                 pf = np.sum(beliefs_comp[:, -self.owf_env.proba_size_q:], axis=1)
                 sensor_index = (-pf).argsort()[:comp_insp]
                 for index in sensor_index:
                     action_[self.owf_env.agent_list[index]] = 2
             if np.sum(obs) < self.owf_env.n_owt*self.owf_env.lev*self.owf_env.proba_size_q*2:
-                obs_ag = np.reshape(obs[:,:-1], (self.owf_env.n_agents, -1) )
+                obs_ag = np.reshape(obs[:,:-self.owf_env.n_mdcomp], (self.owf_env.n_agents, -1) )
                 index_repair = np.where(obs_ag%self.owf_env.proba_size_q>4)[0]
                 if len(index_repair) > 0:
                     for index in index_repair:

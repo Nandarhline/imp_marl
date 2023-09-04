@@ -3,9 +3,9 @@ env: digital_twin
 env_args:
   struct_type: "owf"
   n_comp: 10
-  discount_reward: 0.95
+  discount_reward: 1
   custom_param:
-    lev:  3
+    comps:  [4,4,1]
   state_obs: True
   state_twin: False
   state_eps: False

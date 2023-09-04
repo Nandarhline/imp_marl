@@ -43,8 +43,8 @@ class PymarlMATwin(MultiAgentEnv):
                         {"k_comp": int} for k_comp out of n_comp
                         Default is None, meaning k_comp=n_comp-1
                  owf: Number of levels per wind turbine
-                        {"lev": int}
-                        Default is 3
+                        {"comps": list}
+                        Default is [1,1,1]
             discount_reward: (float) Discount factor [0,1[
             state_obs: (bool) State contains the concatenation of obs
             state_twin: (bool) State contains the concatenation of physical/virtual twin state
@@ -66,9 +66,9 @@ class PymarlMATwin(MultiAgentEnv):
                         custom_param is not None) else None
             assert self.k_comp is None or self.k_comp <= n_comp, "Error in k_comp"
         elif struct_type == "owf":
-            self.lev = custom_param.get("lev", 3) if (
-                        custom_param is not None) else 3
-            assert self.lev is not None, "Error in lev"
+            self.comps = custom_param.get("comps", [1,1,1]) if (
+                        custom_param is not None) else [1,1,1]
+            assert self.comps is not None, "Error in comps"
 
         assert isinstance(state_obs, bool) \
                and isinstance(state_twin, bool) \
@@ -110,12 +110,11 @@ class PymarlMATwin(MultiAgentEnv):
             self.n_agents = self.struct_env.n_comp
         elif struct_type == "owf":
             self.config = {"n_owt": n_comp,
-                           "lev": self.lev,
+                           "comps": self.comps,
                            "discount_reward": discount_reward,
                            "campaign_cost": campaign_cost,
                            "virtual_sensor": virtual_sensor
                            }
-
             self.struct_env = Owf_twin(self.config)
             self.n_agents = self.struct_env.n_agents
 

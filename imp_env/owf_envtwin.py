@@ -39,24 +39,27 @@ class Owf_twin(ImpEnv):
     """
         if config is None:
             config = {"n_owt": 2,
-                      "lev": 3,
+                      "comps": [2, 1, 4],
                       "discount_reward": 1,
                       "campaign_cost": False,
                       "virtual_sensor": True}
         assert "n_owt" in config and \
-               "lev" in config and \
+               "comps" in config and \
                "discount_reward" in config and \
                "campaign_cost" in config and \
                "virtual_sensor" in config, \
             "Missing env config"
 
         self.n_owt = config["n_owt"]  
-        self.lev = config["lev"]
+        self.n_awcomp = config["comps"][0]
+        self.n_bwcomp = config["comps"][1] 
+        self.n_mdcomp = config["comps"][2] 
+        self.lev = self.n_awcomp + self.n_bwcomp + self.n_mdcomp
         self.discount_reward = config["discount_reward"]
         self.campaign_cost = config["campaign_cost"]
         self.virutal_sensor = config["virtual_sensor"]
         self.n_comp = self.n_owt*self.lev
-        self.n_agents = self.n_owt*(self.lev-1)
+        self.n_agents = self.n_owt*(self.lev-self.n_mdcomp)
         self.ep_length = 20 
 
         # Loading the underlying transition and inspection models
@@ -87,9 +90,11 @@ class Owf_twin(ImpEnv):
 
         # (n_owt, 3 levels, nstcomp cracks)
         self.initial_damage_proba = np.zeros((self.n_owt, self.lev, self.proba_size))
-        self.initial_damage_proba[:] = drmodel['belief0']
-        self.initial_twin_state = np.tile(drmodel['belief0_twin'],(self.n_owt, self.lev-1, 1))          
-        self.initial_eps = np.tile(drmodel['belief0_eps'],(self.n_owt, self.lev-1, 1))
+        self.initial_damage_proba[:,0:self.n_awcomp,:] = drmodel['belief0'][0,:]
+        self.initial_damage_proba[:,self.n_awcomp:self.n_awcomp+self.n_bwcomp,:] = drmodel['belief0'][1,:]
+        self.initial_damage_proba[:,-self.n_mdcomp:,:] = drmodel['belief0'][2,:]
+        self.initial_twin_state = np.tile(drmodel['belief0_twin'],(self.n_owt, self.lev-self.n_mdcomp, 1))          
+        self.initial_eps = np.tile(drmodel['belief0_eps'],(self.n_owt, self.lev-self.n_mdcomp, 1))
 
         # Transition models
         self.T0 = drmodel['T0'] 
@@ -128,7 +133,7 @@ class Owf_twin(ImpEnv):
         self.twin_state = self.initial_twin_state
         self.epsilon_proba = self.initial_eps
         self.d_rate = np.zeros((self.n_owt, self.lev, 1), dtype=int)
-        damage_proba_comp = np.reshape(self.damage_proba[:, :-1, :], (self.n_agents, -1))
+        damage_proba_comp = np.reshape(self.damage_proba[:, :-self.n_mdcomp, :], (self.n_agents, -1))
         # epsilon_proba_comp = np.reshape(self.epsilon_proba[:, :, :], (self.n_agents, -1))
         self.observations = {}
 
@@ -169,7 +174,7 @@ class Owf_twin(ImpEnv):
             rewards[self.agent_list[i]] = reward
 
         self.time_step += 1
-        damage_proba_comp = np.reshape(next_damage_proba[:,:-1,:], (self.n_agents, -1))
+        damage_proba_comp = np.reshape(next_damage_proba[:,:-self.n_mdcomp,:], (self.n_agents, -1))
         # epsilon_proba_comp = np.reshape(self.epsilon_proba[:, :, :], (self.n_agents, -1))
 
         self.observations = {} 
@@ -224,35 +229,39 @@ class Owf_twin(ImpEnv):
         PF = np.sum(B[:, :, -self.proba_size_q:], axis=2)
         PF_ = np.sum(B_[:, :, -self.proba_size_q:], axis=2).copy()
         for i in range(self.n_owt):
-            for j in range(self.lev-1): 
+            for j in range(self.lev-self.n_mdcomp): 
+                # Identify which component is this
+                if j<self.n_awcomp: comp_ind = 0 # Above-water component
+                elif j<(self.n_awcomp+self.n_bwcomp): comp_ind = 1 # Below-water component
+                else: comp_ind = 2 # Mudline component
                 # Perfect repair 
-                if a[(self.lev-1)*i+j] == 4 and j==0: # atomospheric component
+                if a[(self.lev-self.n_mdcomp)*i+j] == 4 and comp_ind == 0: # atomospheric component
                     cost_system += -10 
-                elif a[(self.lev-1)*i+j] == 4 and j==1: # splash zone component
+                elif a[(self.lev-self.n_mdcomp)*i+j] == 4 and comp_ind == 1: # splash zone component
                     cost_system += -30
                 # Perfect repair - install sensor    
-                elif a[(self.lev-1)*i+j] == 5 and j==0: # atomospheric component
+                elif a[(self.lev-self.n_mdcomp)*i+j] == 5 and comp_ind == 0: # atomospheric component
                     cost_system += -12 if self.campaign_cost else  -16 
-                elif a[(self.lev-1)*i+j] == 5 and j==1: # splash zone component
+                elif a[(self.lev-self.n_mdcomp)*i+j] == 5 and comp_ind == 1: # splash zone component
                     cost_system +=  -36 if self.campaign_cost else -48
                 # Do nothing
                 else:
-                    Bplus = B[i, j, :].dot(self.T0[j, drate[i, j, 0]]) 
+                    Bplus = B[i, j, :].dot(self.T0[comp_ind, drate[i, j, 0]]) 
                     PF_[i,j] = np.sum(Bplus[-self.proba_size_q:])
                     # Do nothing - Inspection
-                    if a[(self.lev-1)*i+j] == 1 and j==0: # atomospheric component
+                    if a[(self.lev-self.n_mdcomp)*i+j] == 1 and comp_ind == 0: # atomospheric component
                         cost_system += -1 if self.campaign_cost else -3
-                    elif a[(self.lev-1)*i+j] == 1 and j==1: # splash zone component
+                    elif a[(self.lev-self.n_mdcomp)*i+j] == 1 and comp_ind == 1: # splash zone component
                         cost_system += -3 if self.campaign_cost else  -9 
                     # Do nothing - Install sensor
-                    elif a[(self.lev-1)*i+j] == 2 and j==0: # atomospheric component
+                    elif a[(self.lev-self.n_mdcomp)*i+j] == 2 and comp_ind == 0: # atomospheric component
                         cost_system += -2 if self.campaign_cost else  -6
-                    elif a[(self.lev-1)*i+j] == 2 and j==1: # splash zone component
+                    elif a[(self.lev-self.n_mdcomp)*i+j] == 2 and comp_ind == 1: # splash zone component
                         cost_system += -6 if self.campaign_cost else  -18     
                     # Do nothing - Inspection - Install sensor
-                    elif a[(self.lev-1)*i+j] == 3 and j==0: # atomospheric component
+                    elif a[(self.lev-self.n_mdcomp)*i+j] == 3 and comp_ind == 0: # atomospheric component
                         cost_system += -3 if self.campaign_cost else  -9
-                    elif a[(self.lev-1)*i+j] == 3 and j==1: # splash zone component
+                    elif a[(self.lev-self.n_mdcomp)*i+j] == 3 and comp_ind == 1: # splash zone component
                         cost_system += -9 if self.campaign_cost else  -27
                         
         PfSyS = self.pf_sys(PF)
@@ -287,27 +296,30 @@ class Owf_twin(ImpEnv):
         ob = np.ones((self.n_owt, self.lev))*2*self.proba_size_q
         next_drate = np.zeros((self.n_owt, self.lev, 1), dtype=int)
         for i in range(self.n_owt):
-            for j in range(self.lev-1):
+            for j in range(self.lev-self.n_mdcomp):
+                if j<self.n_awcomp: comp_ind = 0 # Above-water component
+                elif j<(self.n_awcomp+self.n_bwcomp): comp_ind = 1 # Below-water component
+                else: comp_ind = 2 # Mudline component
                 # print(twin_state[i,j,])
                 twin_presence = np.nonzero(twin_state[i, j, :])[0][0]
                 # TRANSITION THE PHYSICAL TWIN
-                if action[(self.lev - 1) * i + j] == 4 or action[(self.lev - 1) * i + j] == 5:
-                    next_damage_proba[i, j, :] = damage_proba[i, j, :].dot(self.Tr[j, drate[i, j, 0]]) 
+                if action[(self.lev - self.n_mdcomp) * i + j] == 4 or action[(self.lev - self.n_mdcomp ) * i + j] == 5:
+                    next_damage_proba[i, j, :] = damage_proba[i, j, :].dot(self.Tr[comp_ind, drate[i, j, 0]]) 
                     next_drate[i, j, 0] = 0
                 
                 else:
-                    p1 = damage_proba[i, j, :].dot(self.T0[j, drate[i, j, 0]])
+                    p1 = damage_proba[i, j, :].dot(self.T0[comp_ind, drate[i, j, 0]])
                     next_drate[i, j, 0] = drate[i, j, 0] + 1
-                    if action[(self.lev - 1) * i + j] == 0 or action[(self.lev - 1) * i + j] == 2: # No-inspection
+                    if action[(self.lev - self.n_mdcomp) * i + j] == 0 or action[(self.lev - self.n_mdcomp) * i + j] == 2: # No-inspection
                         if twin_presence == 0: # Belief update with load observation from physical sensor
-                            prob_obs = self.O_monitor[j,:].T.dot(p1)
+                            prob_obs = self.O_monitor[comp_ind,:].T.dot(p1)
                             s1 = np.nonzero(np.random.multinomial(1, prob_obs))[0][0]
-                            next_damage_proba[i, j, :] = p1*self.O_monitor[j,:,s1]/sum(p1*self.O_monitor[j,:,s1])    
+                            next_damage_proba[i, j, :] = p1*self.O_monitor[comp_ind,:,s1]/sum(p1*self.O_monitor[comp_ind,:,s1])    
                             ob[i, j] = s1
                         elif twin_presence == 1: # Belief update with load observation from virtual sensor
                             # Built the observation model on the go
-                            qobs, epsilon = self.dtwin_observation_matrix(epsilon_proba[i, j, :], j)
-                            O = np.zeros(self.O_monitor[j, :].shape)
+                            qobs, epsilon = self.dtwin_observation_matrix(epsilon_proba[i, j, :], comp_ind)
+                            O = np.zeros(self.O_monitor[comp_ind, :].shape)
                             O[:,0:self.proba_size_q] = qobs 
                             prob_obs = O.T.dot(p1)
                             s1 = np.nonzero(np.random.multinomial(1, prob_obs))[0][0]
@@ -317,57 +329,58 @@ class Owf_twin(ImpEnv):
                         else: # No belief update
                             next_damage_proba[i, j, :] = p1
 
-                    if action[(self.lev - 1) * i + j] == 1 or action[(self.lev - 1) * i + j] == 3: # Inspection
+                    if action[(self.lev - self.n_mdcomp) * i + j] == 1 or action[(self.lev - self.n_mdcomp) * i + j] == 3: # Inspection
                         if twin_presence == 0:# Belief update with load observation from physical sensor and inspection
-                            prob_obs = self.O_ins_monitor[j,:].T.dot(p1)
+                            prob_obs = self.O_ins_monitor[comp_ind,:].T.dot(p1)
                             s1 = np.nonzero(np.random.multinomial(1, prob_obs))[0][0]
-                            next_damage_proba[i, j, :] = p1*self.O_ins_monitor[j,:,s1]/sum(p1*self.O_ins_monitor[j,:,s1]) 
+                            next_damage_proba[i, j, :] = p1*self.O_ins_monitor[comp_ind,:,s1]/sum(p1*self.O_ins_monitor[comp_ind,:,s1]) 
                             ob[i, j ] = s1 
                         elif twin_presence == 1: # Belief update with load observation from virtual sensor and inspection
                             # Built the observation model on the go
-                            qobs, epsilon = self.dtwin_observation_matrix(epsilon_proba[i, j, :], j)
-                            O = np.zeros(self.O_ins_monitor[j,:].shape)
-                            O = np.concatenate((qobs.T*(self.O_ins[j,:,0]), qobs.T*(self.O_ins[j,:,self.proba_size_q])),axis=0).T
+                            qobs, epsilon = self.dtwin_observation_matrix(epsilon_proba[i, j, :], comp_ind)
+                            O = np.zeros(self.O_ins_monitor[comp_ind,:].shape)
+                            O = np.concatenate((qobs.T*(self.O_ins[comp_ind,:,0]), qobs.T*(self.O_ins[comp_ind,:,self.proba_size_q])),axis=0).T
                             prob_obs = O.T.dot(p1)
                             s1 = np.nonzero(np.random.multinomial(1, prob_obs))[0][0]
                             next_damage_proba[i, j, :] = p1*O[:,s1]/sum(p1*O[:,s1]) 
                             next_epsilon_proba[i, j, 0] = epsilon # The second parameter controls how uncertain the turbine will evolve
                             ob[i, j] = s1 
                         else: # Belief update with inspection
-                            prob_obs = self.O_ins[j,:].T.dot(p1)
+                            prob_obs = self.O_ins[comp_ind,:].T.dot(p1)
                             s1 = np.nonzero(np.random.multinomial(1, prob_obs))[0][0]
-                            next_damage_proba[i, j, :] = p1*self.O_ins[j,:,s1]/sum(p1*self.O_ins[j,:,s1]) 
+                            next_damage_proba[i, j, :] = p1*self.O_ins[comp_ind,:,s1]/sum(p1*self.O_ins[comp_ind,:,s1]) 
                             ob[i, j] = s1
 
                # TRANSITION THE PHYSICAL TWIN  
-                if action[(self.lev - 1) * i + j] == 4: # Perfect repair (Go back to no physical/virtual sensor)
+                if action[(self.lev - self.n_mdcomp) * i + j] == 4: # Perfect repair (Go back to no physical/virtual sensor)
                     next_twin_state[i, j ,:] = twin_state[i, j ,:].dot(self.Tr_twin)
                     next_epsilon_proba[i, j, 0] = 0.1
-                elif action[(self.lev - 1) * i + j] == 0 or action[(self.lev - 1) * i + j] == 1:  
-                    next_twin_state[i, j, :] = twin_state[i, j ,:].dot(self.T0_twin) # Transition the digital twin belief stochastically
+                elif action[(self.lev - self.n_mdcomp) * i + j] == 0 or action[(self.lev - self.n_mdcomp) * i + j] == 1:  
+                    next_twin_state[i, j, :] = twin_state[i, j ,:].dot(self.T0_twin) 
                 else:  # Install sensor
                     next_twin_state[i, j, :] = twin_state[i, j ,:].dot(self.Ts_twin)
                     next_epsilon_proba[i, j, 0] = 0.1
             
             ## Turbine level that cannot be inspected nor repaired
-            p1 = damage_proba[i, -1, :].dot(self.T0[-1, drate[i, -1, 0]])
-            next_damage_proba[i, -1, :] = p1
-            ob[i, -1] = 2*self.proba_size_q
-            # if do nothing, you update your damage prob without new evidence
-            next_drate[i, -1, 0] = drate[i, -1, 0] + 1
-            # At every timestep, the deterioration rate increases
+            for j in range(self.n_mdcomp):
+                p1 = damage_proba[i, self.n_awcomp+self.n_bwcomp+j, :].dot(self.T0[-1, drate[i, self.n_awcomp+self.n_bwcomp+j, 0]])
+                next_damage_proba[i, self.n_awcomp+self.n_bwcomp+j, :] = p1
+                ob[i, self.n_awcomp+self.n_bwcomp+j] = 2*self.proba_size_q
+                # if do nothing, you update your damage prob without new evidence
+                next_drate[i, self.n_awcomp+self.n_bwcomp+j, 0] = drate[i, self.n_awcomp+self.n_bwcomp+j, 0] + 1
+                # At every timestep, the deterioration rate increases
             
         return ob, next_damage_proba, next_twin_state, next_epsilon_proba, next_drate
 
-    def dtwin_observation_matrix(self, beps, lev_ind):
+    def dtwin_observation_matrix(self, beps, comp_ind):
         epsilon = np.random.normal(beps[0],beps[0]*beps[1],(1,1))
-        qint = np.tile(self.q_ref[lev_ind],(100,1)).T
+        qint = np.tile(self.q_ref[comp_ind],(100,1)).T
         while epsilon < 0:
             epsilon = np.random.normal(beps[0],beps[0]*beps[1],(1,1))
         # qobs_std = np.ones((100,))*epsilon          
         qobs = np.zeros((self.proba_size_q, self.proba_size_q))
         for k in range(self.proba_size_q):
-            qobs_mean = np.linspace(self.q_interv[lev_ind, k],self.q_interv[lev_ind, k+1],100)
+            qobs_mean = np.linspace(self.q_interv[comp_ind, k],self.q_interv[comp_ind, k+1],100)
             #Negative samples are taken as first bin q_ref[0] = -1e100
             qobs_cdf = stats.norm.cdf(qint, qobs_mean, (0.07+epsilon)*qobs_mean).T
             qobs_pdf = np.diff(qobs_cdf)/100

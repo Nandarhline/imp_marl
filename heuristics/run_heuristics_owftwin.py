@@ -3,16 +3,16 @@ import timeit
 
 if __name__ == '__main__':
 
-    n_comp = 1
-    lev = 3
+    n_owt = 1
+    comps = [4,4,1]
     discount_reward = 0.95
     campaign_cost = True
     virtual_sensor = True
-    eval_size = 1000
+    eval_size = 10
     
     #### Search or evaluate inspection intervals and no of components
-    search_ins = True
-    eval_ins = True
+    search_ins = False
+    eval_ins = False
     # Eval values
     insp_int = 22
     insp_comp = 10
@@ -24,8 +24,8 @@ if __name__ == '__main__':
     sens_int = 22
     sens_comp = 10
     
-    h1 = Heuristics(n_comp,
-                    lev,
+    h1 = Heuristics(n_owt,
+                    comps,
                      # Number of structure
                      discount_reward,
                      # float [0,1] importance of
