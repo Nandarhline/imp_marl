@@ -195,22 +195,53 @@ class Owf_twin(ImpEnv):
 
         return self.observations, rewards, done, observation_
 
-    def pf_sys(self, pf): 
-        """ Computes the system failure probability as the sum of the failure risk of all wind tubines.
-            Each wind turbine fails if any component fails.
+    # def pf_sys(self, pf): 
+    #     """ Computes the system failure probability as the sum of the failure risk of all wind tubines.
+    #         Each wind turbine fails if any component fails.
         
-        Args:
-            pf: Numpy array with components' failure probability.
+    #     Args:
+    #         pf: Numpy array with components' failure probability.
         
-        Returns:
-            PF_sys: Numpy array with the system failure probability.
-        """
+    #     Returns:
+    #         PF_sys: Numpy array with the system failure probability.
+    #     """
+    #     pfSys = np.zeros(self.n_owt)
+    #     surv = 1 - pf.copy()
+    #     #failsys = np.zeros((nwtb,2))
+    #     for i in range(self.n_owt):
+    #         survC = np.prod(surv[i,:])
+    #         pfSys[i] = 1 - survC
+    #     return pfSys
+    
+    def pf_sys(self, pf):
+        n = 2 # 1-out-of-2 system (number of components per level)
+        n_pairedlev = int(self.lev/n)
+        k = 1
+        nk = n - k
+        m = k + 1
         pfSys = np.zeros(self.n_owt)
-        surv = 1 - pf.copy()
-        #failsys = np.zeros((nwtb,2))
-        for i in range(self.n_owt):
-            survC = np.prod(surv[i,:])
-            pfSys[i] = 1 - survC
+        for wt in range(self.n_owt):
+            pfSubsys = np.zeros(n_pairedlev)
+            # First compute pf of each level
+            for l in range(n_pairedlev):
+                pf_lev = pf[wt,l*n:(l+1)*n]
+                A = np.zeros(m + 1)
+                A[1] = 1
+                L = 1
+                for j in range(1, n + 1):
+                    h = j + 1
+                    Rel = 1 - pf_lev[j - 1]
+                    if nk < j:
+                        L = h - nk
+                    if k < j:
+                        A[m] = A[m] + A[k] * Rel
+                        h = k
+                    for i in range(h, L - 1, -1):
+                        A[i] = A[i] + (A[i - 1] - A[i]) * Rel
+                pfSubsys[l] = 1 - A[m]
+            surv = 1-pfSubsys.copy()
+            survC = np.prod(surv)
+            pfSys[wt] = 1 - survC
         return pfSys
 
     def immediate_cost(self, B, a, B_, drate):
