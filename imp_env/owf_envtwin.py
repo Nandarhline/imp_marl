@@ -272,9 +272,9 @@ class Owf_twin(ImpEnv):
                     cost_system += -30
                 # Perfect repair - install sensor    
                 elif a[(self.lev-self.n_mdcomp)*i+j] == 5 and comp_ind == 0: # atomospheric component
-                    cost_system += -12 if self.campaign_cost else  -16 
+                    cost_system += -13 if self.campaign_cost else  -16 
                 elif a[(self.lev-self.n_mdcomp)*i+j] == 5 and comp_ind == 1: # splash zone component
-                    cost_system +=  -36 if self.campaign_cost else -48
+                    cost_system +=  -39 if self.campaign_cost else -48
                 # Do nothing
                 else:
                     Bplus = B[i, j, :].dot(self.T0[comp_ind, drate[i, j, 0]]) 
@@ -286,14 +286,14 @@ class Owf_twin(ImpEnv):
                         cost_system += -3 if self.campaign_cost else  -9 
                     # Do nothing - Install sensor
                     elif a[(self.lev-self.n_mdcomp)*i+j] == 2 and comp_ind == 0: # atomospheric component
-                        cost_system += -2 if self.campaign_cost else  -6
+                        cost_system += -3 if self.campaign_cost else  -6
                     elif a[(self.lev-self.n_mdcomp)*i+j] == 2 and comp_ind == 1: # splash zone component
-                        cost_system += -6 if self.campaign_cost else  -18     
+                        cost_system += -9 if self.campaign_cost else  -18     
                     # Do nothing - Inspection - Install sensor
                     elif a[(self.lev-self.n_mdcomp)*i+j] == 3 and comp_ind == 0: # atomospheric component
-                        cost_system += -3 if self.campaign_cost else  -9
+                        cost_system += -4 if self.campaign_cost else  -9
                     elif a[(self.lev-self.n_mdcomp)*i+j] == 3 and comp_ind == 1: # splash zone component
-                        cost_system += -9 if self.campaign_cost else  -27
+                        cost_system += -12 if self.campaign_cost else  -27
                         
         if self.lev ==3:
             PfSyS = self.pf_sys1(PF)
