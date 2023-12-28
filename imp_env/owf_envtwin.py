@@ -195,23 +195,23 @@ class Owf_twin(ImpEnv):
 
         return self.observations, rewards, done, observation_
 
-    # def pf_sys(self, pf): 
-    #     """ Computes the system failure probability as the sum of the failure risk of all wind tubines.
-    #         Each wind turbine fails if any component fails.
+    def pf_sys1(self, pf): 
+        """ Computes the system failure probability as the sum of the failure risk of all wind tubines.
+            Each wind turbine fails if any component fails.
         
-    #     Args:
-    #         pf: Numpy array with components' failure probability.
+        Args:
+            pf: Numpy array with components' failure probability.
         
-    #     Returns:
-    #         PF_sys: Numpy array with the system failure probability.
-    #     """
-    #     pfSys = np.zeros(self.n_owt)
-    #     surv = 1 - pf.copy()
-    #     #failsys = np.zeros((nwtb,2))
-    #     for i in range(self.n_owt):
-    #         survC = np.prod(surv[i,:])
-    #         pfSys[i] = 1 - survC
-    #     return pfSys
+        Returns:
+            PF_sys: Numpy array with the system failure probability.
+        """
+        pfSys = np.zeros(self.n_owt)
+        surv = 1 - pf.copy()
+        #failsys = np.zeros((nwtb,2))
+        for i in range(self.n_owt):
+            survC = np.prod(surv[i,:])
+            pfSys[i] = 1 - survC
+        return pfSys
     
     def pf_sys(self, pf):
         n = 2 # 1-out-of-2 system (number of components per level)
@@ -295,8 +295,12 @@ class Owf_twin(ImpEnv):
                     elif a[(self.lev-self.n_mdcomp)*i+j] == 3 and comp_ind == 1: # splash zone component
                         cost_system += -9 if self.campaign_cost else  -27
                         
-        PfSyS = self.pf_sys(PF)
-        PfSyS_ = self.pf_sys(PF_)
+        if self.lev ==3:
+            PfSyS = self.pf_sys1(PF)
+            PfSyS_ = self.pf_sys1(PF_)
+        else:
+            PfSyS = self.pf_sys(PF)
+            PfSyS_ = self.pf_sys(PF_)   
         for i in range(self.n_owt):
             if PfSyS_[i] < PfSyS[i]:
                 cost_system += PfSyS_[i] * (-5000)
